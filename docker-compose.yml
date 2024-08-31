@@ -1,0 +1,17 @@
+
+services:
+
+  db:
+    image: postgres:latest
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: labmet
+      POSTGRES_PASSWORD: labmetufcg
+      POSTGRES_DB: labmet-fala-texto
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
