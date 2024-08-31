@@ -1,17 +1,29 @@
-
+version: '3.8'
 services:
-
   db:
     image: postgres:latest
-    container_name: postgres_db
     environment:
-      POSTGRES_USER: labmet
-      POSTGRES_PASSWORD: labmetufcg
-      POSTGRES_DB: labmet-fala-texto
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+  web:
+    build: .
+    command: python app.py
+    volumes:
+      - .:/app
+    ports:
+      - "5000:5000"
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      - db
 
 volumes:
   postgres_data:

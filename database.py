@@ -9,10 +9,11 @@ load_dotenv(dotenv_path='.env')
 POSTGRES_USER=os.getenv('POSTGRES_USER')
 POSTGRES_PASSWORD=os.getenv("POSTGRES_PASSWORD")
 POSTGRES_DB=os.getenv('POSTGRES_DB')
-
+postgresql_host = os.getenv("POSTGRESQL_HOST")
+print(postgresql_host)
 def get_database_connection():
     conn = psycopg2.connect(
-        host="localhost",
+        host=postgresql_host,
         database=POSTGRES_DB,
         user=POSTGRES_USER,
         password=POSTGRES_PASSWORD

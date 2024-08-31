@@ -14,6 +14,7 @@ load_dotenv()
 huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
 huggingface_id = os.getenv("HUGGINGFACE_REPO_ID")
 
+
 login(huggingface_token)
 
 @app.route('/')
