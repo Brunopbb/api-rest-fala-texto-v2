@@ -14,7 +14,6 @@ load_dotenv()
 huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
 huggingface_id = os.getenv("HUGGINGFACE_REPO_ID")
 
-
 login(huggingface_token)
 
 @app.route('/')
@@ -23,17 +22,19 @@ def index():
 
 @app.route("/random_transcription", methods=["GET"])
 def random_transcription():
-    transcription = get_random_transcription()
-    return jsonify({"transcription": transcription})
+    transcription_data = get_random_transcription()
+    if not transcription_data:
+        return jsonify({"Error": "Nenhuma transcrição disponível"}), 404
+    return jsonify(transcription_data)
 
 @app.route("/upload_audio", methods=["POST"])
 def upload_audio():
-
     audio_keys = [key for key in request.files.keys() if key.startswith('audios')]
     transcription_keys = [key for key in request.form.keys() if key.startswith('transcriptions')]
+    transcription_id = request.form.get('transcription_id')  # Ajuste aqui
 
-    if not audio_keys or not transcription_keys:
-        return jsonify({"Error": "Áudios ou transcrições não foram enviados"}), 400
+    if not audio_keys or not transcription_keys or not transcription_id:
+        return jsonify({"Error": "Áudios ou transcrições não foram enviados corretamente"}), 400
 
     try:
         exists_dataset = load_dataset(huggingface_id, split="train")
@@ -76,7 +77,27 @@ def upload_audio():
 
         new_data.push_to_hub(huggingface_id)
 
+        # Invalidar a transcrição agora que o áudio foi salvo
+        invalidate_transcription(transcription_id)
+
     return jsonify({"Mensagem": "Áudios recebidos e salvos com sucesso"}), 200
+
+@app.route("/add_transcription", methods=["POST"])
+def add_transcription():
+    transcription = request.form.get('transcription')
+    if not transcription:
+        return jsonify({"responseMessage": "Nenhuma transcrição foi enviada"}), 400
+
+    success, message = add_transcription_on(transcription)
+    if success:
+        return jsonify({"responseMessage": message}), 200
+    else:
+        return jsonify({"responseMessage": message}), 400
+
+
+@app.route('/add_transcription')
+def add_transcription_page():
+    return render_template('add_transcription.html')
 
 
 if __name__ == "__main__":

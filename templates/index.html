@@ -39,17 +39,51 @@
             gap: 10px;
         }
         button {
-            padding: 10px 20px;
-            font-size: 1em;
+            padding: 12px 24px;
+            font-size: 1.2em;
             cursor: pointer;
             border: none;
             border-radius: 5px;
             background-color: #007BFF;
             color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, transform 0.3s ease;
         }
-        button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
+        button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+        button:active {
+            background-color: #003f7f;
+            transform: translateY(0);
+        }
+        .add-transcription-link {
+            margin-top: 20px;
+        }
+        .add-transcription-link a {
+            padding: 12px 24px;
+            font-size: 1.2em;
+            cursor: pointer;
+            text-decoration: none;
+            border-radius: 5px;
+            background-color: #28a745;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        .add-transcription-link a:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+        }
+        .add-transcription-link a:active {
+            background-color: #1e7e34;
+            transform: translateY(0);
+        }
+        .sending-message {
+            margin-top: 20px;
+            color: #007BFF;
+            font-size: 1.2em;
+            display: none; /* Ocultado por padrão */
         }
     </style>
 </head>
@@ -62,23 +96,29 @@
         <button id="start-record">Iniciar Gravação</button>
         <button id="stop-record" disabled>Parar Gravação</button>
         <button id="cancel-audio" disabled>Cancelar Gravação</button>
-        <button id="save-audio" disabled>Salvar Audio</button>
+        <button id="save-audio" disabled>Salvar Áudio</button>
     </div>
     <div class="controls">
-        <button id="send-all" disabled>Enviar Todos os audios</button>
+        <button id="send-all" disabled>Enviar Todos os Áudios</button>
+    </div>
+    <div class="sending-message" id="sendingMessage">
+        Enviando áudios, por favor aguarde...
+    </div>
+    <div class="add-transcription-link">
+        <a href="/add_transcription">Adicionar Nova Transcrição</a>
     </div>
 
     <script>
         let mediaRecorder;
         let audioChunks = [];
         let recordedAudios = [];
-        let currentTranscription = '';
+        let currentTranscription = {};
 
         async function fetchRandomTranscription() {
             const response = await fetch('/random_transcription');
             const data = await response.json();
-            currentTranscription = data.transcription;
-            document.getElementById('transcription').textContent = currentTranscription;
+            currentTranscription = data;
+            document.getElementById('transcription').textContent = currentTranscription.transcription;
         }
 
         // Fetch a new transcription when the page loads
@@ -130,7 +170,7 @@
 
             recordedAudios.push({
                 audio: audioBlob,
-                transcription: currentTranscription
+                transcription: currentTranscription.transcription
             });
 
             document.getElementById('save-audio').disabled = true;
@@ -143,10 +183,17 @@
         document.getElementById('send-all').addEventListener('click', async () => {
             const formData = new FormData();
 
+            const transcriptionId = currentTranscription.id;  // ID da transcrição
+            formData.append('transcription_id', transcriptionId);  // Adiciona o ID da transcrição
+
             recordedAudios.forEach((item, index) => {
                 formData.append(`audios[${index}]`, item.audio, `recorded_audio_${index}.wav`);
                 formData.append(`transcriptions[${index}]`, item.transcription);
             });
+
+            // Mostrar a mensagem de envio
+            const sendingMessage = document.getElementById('sendingMessage');
+            sendingMessage.style.display = 'block';
 
             const response = await fetch('/upload_audio', {
                 method: 'POST',
@@ -160,6 +207,9 @@
             } else {
                 alert("Erro ao enviar os áudios.");
             }
+
+            // Esconder a mensagem de envio após a conclusão
+            sendingMessage.style.display = 'none';
         });
     </script>
 </body>

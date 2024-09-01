@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adicionar Transcrição - LABMET</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .form-container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 500px;
+            margin: 20px auto;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 1em;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #28a745;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        button:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+        }
+        button:active {
+            background-color: #1e7e34;
+            transform: translateY(0);
+        }
+        .response-message {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #007BFF;
+        }
+        .back-link {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .back-link a {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            text-decoration: none;
+            border-radius: 5px;
+            background-color: #6c757d;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        .back-link a:hover {
+            background-color: #5a6268;
+            transform: translateY(-2px);
+        }
+        .back-link a:active {
+            background-color: #4e555b;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <h1>Adicionar Nova Transcrição</h1>
+    <div class="form-container">
+        <form id="transcriptionForm">
+            <textarea id="transcription" name="transcription" placeholder="Digite a transcrição aqui..."></textarea>
+            <button type="submit">Adicionar</button>
+        </form>
+        <p class="response-message" id="responseMessage"></p>
+    </div>
+    <div class="back-link">
+        <a href="/">Voltar</a>
+    </div>
+
+    <script>
+        document.getElementById('transcriptionForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const formData = new FormData();
+            formData.append('transcription', document.getElementById('transcription').value);
+
+            const response = await fetch('/add_transcription', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            document.getElementById('responseMessage').textContent = result.responseMessage;
+
+            // Limpa o campo de texto após o envio, se a transcrição foi adicionada com sucesso
+            if (response.ok) {
+                document.getElementById('transcription').value = '';
+            }
+        });
+    </script>
+</body>
+</html>
