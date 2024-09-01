@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aquisição de Dados de Áudio - LABMET</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+        }
+        .transcription-container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 80%;
+            margin: 20px auto;
+        }
+        .transcription {
+            font-size: 1.5em;
+            color: #555;
+            word-wrap: break-word;
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007BFF;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+        button:active {
+            background-color: #003f7f;
+            transform: translateY(0);
+        }
+        .add-transcription-link {
+            margin-top: 20px;
+        }
+        .add-transcription-link a {
+            padding: 12px 24px;
+            font-size: 1.2em;
+            cursor: pointer;
+            text-decoration: none;
+            border-radius: 5px;
+            background-color: #28a745;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        .add-transcription-link a:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+        }
+        .add-transcription-link a:active {
+            background-color: #1e7e34;
+            transform: translateY(0);
+        }
+        .sending-message {
+            margin-top: 20px;
+            color: #007BFF;
+            font-size: 1.2em;
+            display: none; /* Ocultado por padrão */
+        }
+    </style>
+</head>
+<body>
+    <h1>Aquisição de Dados de Áudio - LABMET</h1>
+    <div class="transcription-container">
+        <p class="transcription" id="transcription"></p>
+    </div>
+    <div class="controls">
+        <button id="start-record">Iniciar Gravação</button>
+        <button id="stop-record" disabled>Parar Gravação</button>
+        <button id="cancel-audio" disabled>Cancelar Gravação</button>
+        <button id="save-audio" disabled>Salvar Áudio</button>
+    </div>
+    <div class="controls">
+        <button id="send-all" disabled>Enviar Todos os Áudios</button>
+    </div>
+    <div class="sending-message" id="sendingMessage">
+        Enviando áudios, por favor aguarde...
+    </div>
+    <div class="add-transcription-link">
+        <a href="/add_transcription">Adicionar Nova Transcrição</a>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let recordedAudios = [];
+        let currentTranscription = {};
+
+        async function fetchRandomTranscription() {
+            const response = await fetch('/random_transcription');
+            const data = await response.json();
+            currentTranscription = data;
+            document.getElementById('transcription').textContent = currentTranscription.transcription;
+        }
+
+        // Fetch a new transcription when the page loads
+        fetchRandomTranscription();
+
+        document.getElementById('start-record').addEventListener('click', async () => {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+
+            mediaRecorder.addEventListener('dataavailable', event => {
+                audioChunks.push(event.data);
+            });
+
+            mediaRecorder.start();
+            document.getElementById('start-record').disabled = true;
+            document.getElementById('stop-record').disabled = false;
+            document.getElementById('cancel-audio').disabled = false;
+        });
+
+        document.getElementById('stop-record').addEventListener('click', () => {
+            mediaRecorder.stop();
+
+            mediaRecorder.addEventListener('stop', () => {
+                const audioBlob = new Blob(audioChunks);
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                audio.play();
+
+                // Habilitar o botão de salvar áudio
+                document.getElementById('save-audio').disabled = false;
+                document.getElementById('cancel-audio').disabled = false;
+                document.getElementById('stop-record').disabled = true;
+            });
+
+            document.getElementById('start-record').disabled = false;
+        });
+
+        document.getElementById('cancel-audio').addEventListener('click', () => {
+            audioChunks = [];
+            document.getElementById('save-audio').disabled = true;
+            document.getElementById('cancel-audio').disabled = true;
+            document.getElementById('stop-record').disabled = true;
+            document.getElementById('start-record').disabled = false;
+        });
+
+        document.getElementById('save-audio').addEventListener('click', () => {
+            const audioBlob = new Blob(audioChunks);
+
+            recordedAudios.push({
+                audio: audioBlob,
+                transcription: currentTranscription.transcription
+            });
+
+            document.getElementById('save-audio').disabled = true;
+            document.getElementById('cancel-audio').disabled = true;
+            document.getElementById('send-all').disabled = false;
+
+            fetchRandomTranscription();
+        });
+
+        document.getElementById('send-all').addEventListener('click', async () => {
+            const formData = new FormData();
+
+            const transcriptionId = currentTranscription.id;  // ID da transcrição
+            formData.append('transcription_id', transcriptionId);  // Adiciona o ID da transcrição
+
+            recordedAudios.forEach((item, index) => {
+                formData.append(`audios[${index}]`, item.audio, `recorded_audio_${index}.wav`);
+                formData.append(`transcriptions[${index}]`, item.transcription);
+            });
+
+            // Mostrar a mensagem de envio
+            const sendingMessage = document.getElementById('sendingMessage');
+            sendingMessage.style.display = 'block';
+
+            const response = await fetch('/upload_audio', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                alert("Todos os áudios foram enviados com sucesso!");
+                recordedAudios = [];
+                document.getElementById('send-all').disabled = true;
+            } else {
+                alert("Erro ao enviar os áudios.");
+            }
+
+            // Esconder a mensagem de envio após a conclusão
+            sendingMessage.style.display = 'none';
+        });
+    </script>
+</body>
+</html>
