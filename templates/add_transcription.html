@@ -87,6 +87,38 @@
             background-color: #4e555b;
             transform: translateY(0);
         }
+        .transcription-list {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 500px;
+            text-align: left;
+        }
+        .transcription-item {
+            background-color: #fff;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .transcription-text {
+            flex-grow: 1; /* Faz o texto ocupar o espaço disponível */
+            margin-right: 20px; /* Adiciona um espaçamento entre o texto e o botão */
+        }
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            white-space: nowrap; /* Garante que o texto do botão não seja quebrado */
+        }
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
     </style>
 </head>
 <body>
@@ -98,6 +130,7 @@
         </form>
         <p class="response-message" id="responseMessage"></p>
     </div>
+    <div class="transcription-list" id="transcriptionList"></div>
     <div class="back-link">
         <a href="/">Voltar</a>
     </div>
@@ -120,8 +153,41 @@
             // Limpa o campo de texto após o envio, se a transcrição foi adicionada com sucesso
             if (response.ok) {
                 document.getElementById('transcription').value = '';
+                loadTranscriptions();
             }
         });
+
+        async function loadTranscriptions() {
+            const response = await fetch('/list_transcriptions');
+            const transcriptions = await response.json();
+            const transcriptionList = document.getElementById('transcriptionList');
+            transcriptionList.innerHTML = '';
+
+            transcriptions.forEach(transcription => {
+                const transcriptionItem = document.createElement('div');
+                transcriptionItem.className = 'transcription-item';
+                transcriptionItem.innerHTML = `
+                    <span class="transcription-text">${transcription.transcription}</span>
+                    <button class="delete-btn" onclick="deleteTranscription(${transcription.id})">Deletar</button>
+                `;
+                transcriptionList.appendChild(transcriptionItem);
+            });
+        }
+
+        async function deleteTranscription(id) {
+            const response = await fetch(`/delete_transcription/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                loadTranscriptions();
+            } else {
+                alert('Erro ao deletar a transcrição.');
+            }
+        }
+
+        // Carregar as transcrições válidas ao carregar a página
+        loadTranscriptions();
     </script>
 </body>
 </html>

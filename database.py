@@ -1,5 +1,6 @@
-from database_connection import *
+
 import random
+from database_connection import *
 
 
 def get_random_transcription():
@@ -56,7 +57,7 @@ def add_transcription_on(transcription):
         return True, "Transcrição adicionada com sucesso."
 
     except Exception as e:
-        return False, f"Erro ao adicionar transcrição"
+        return False, f"Erro ao adicionar tracrição"
 
 
 def transcription_exists(transcription):
@@ -74,6 +75,42 @@ def transcription_exists(transcription):
         return count > 0
 
     except Exception as e:
+        return False
+
+def list_valid_transcriptions():
+    try:
+        conn = get_database_connection()
+        cur = conn.cursor()
+
+        query = "SELECT id, transcription FROM transcriptions WHERE valid = true"
+        cur.execute(query)
+        transcriptions = cur.fetchall()
+
+        cur.close()
+        conn.close()
+
+        return [{"id": row[0], "transcription": row[1]} for row in transcriptions]
+
+    except Exception as e:
+        print(f"Erro ao listar transcrições: {str(e)}")
+        return []
+
+def delete_transcription(transcription_id):
+    try:
+        conn = get_database_connection()
+        cur = conn.cursor()
+
+        query = "DELETE FROM transcriptions WHERE id = %s"
+        cur.execute(query, (transcription_id,))
+        conn.commit()
+
+        cur.close()
+        conn.close()
+
+        return True
+
+    except Exception as e:
+        print(f"Erro ao deletar transcrição: {str(e)}")
         return False
 
 
