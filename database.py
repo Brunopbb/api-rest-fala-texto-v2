@@ -2,21 +2,20 @@ import os
 import psycopg2
 import random
 from dotenv import load_dotenv
-from urllib.parse import urlparse
+import urllib.parse as urlparse
 
 load_dotenv()
 
-postegress_db = os.getenv("POSTGRES_DB")
-postegress_user = os.getenv("POSTGRES_USER")
-postegress_pass = os.getenv("POSTGRES_PASSWORD")
 
 def get_database_connection():
+    url = urlparse.urlparse(os.getenv("DATABASE_URL"))
+
     conn = psycopg2.connect(
-        database=postegress_db,
-        user=postegress_user,
-        password=postegress_pass,
-        host="db",
-        port=5432
+        database=url.path[1:],
+        user=url.username,
+        password=url.password,
+        host=url.hostname,
+        port=url.port
     )
     return conn
 
@@ -74,7 +73,7 @@ def add_transcription_on(transcription):
         return True, "Transcrição adicionada com sucesso."
 
     except Exception as e:
-        return False, f"Erro ao adicionar transcrição: {str(e)}"
+        return False, f"Erro ao adicionar transcrição"
 
 
 def transcription_exists(transcription):
@@ -93,3 +92,36 @@ def transcription_exists(transcription):
 
     except Exception as e:
         return False
+
+
+def create_table_if_not_exists():
+    try:
+        conn = get_database_connection()
+        cur = conn.cursor()
+
+        # Verifica se a tabela existe
+        cur.execute("""
+        SELECT EXISTS (
+            SELECT FROM pg_tables
+            WHERE tablename  = 'transcriptions'
+        );
+        """)
+
+        exists = cur.fetchone()[0]
+
+        if not exists:
+            # Cria a tabela se ela não existir
+            cur.execute("""
+            CREATE TABLE transcriptions (
+                id SERIAL PRIMARY KEY,
+                transcription TEXT NOT NULL,
+                valid BOOLEAN DEFAULT TRUE
+            );
+            """)
+            conn.commit()
+
+        cur.close()
+        conn.close()
+
+    except Exception as e:
+        print(f"Erro ao criar tabela: {str(e)}")

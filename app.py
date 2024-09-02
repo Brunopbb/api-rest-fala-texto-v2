@@ -16,6 +16,8 @@ huggingface_id = os.getenv("HUGGINGFACE_REPO_ID")
 
 login(huggingface_token)
 
+create_table_if_not_exists()
+
 @app.route('/')
 def index():
     return render_template('index.html')
