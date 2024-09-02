@@ -1,7 +1,7 @@
 import os
 import psycopg2
 import random
-from database_local_connection import *
+from database_connection import *
 
 
 def get_random_transcription():
