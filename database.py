@@ -1,24 +1,8 @@
 import os
 import psycopg2
 import random
-from dotenv import load_dotenv
-from urllib.parse import urlparse
+from database_local_connection import *
 
-load_dotenv()
-
-postegress_db = os.getenv("POSTGRES_DB")
-postegress_user = os.getenv("POSTGRES_USER")
-postegress_pass = os.getenv("POSTGRES_PASSWORD")
-
-def get_database_connection():
-    conn = psycopg2.connect(
-        database=postegress_db,
-        user=postegress_user,
-        password=postegress_pass,
-        host="db",
-        port=5432
-    )
-    return conn
 
 def get_random_transcription():
     conn = get_database_connection()
