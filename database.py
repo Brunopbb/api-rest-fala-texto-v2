@@ -125,3 +125,4 @@ def create_table_if_not_exists():
 
     except Exception as e:
         print(f"Erro ao criar tabela: {str(e)}")
+
