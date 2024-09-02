@@ -96,10 +96,25 @@ def add_transcription():
     else:
         return jsonify({"responseMessage": message}), 400
 
+@app.route("/list_transcriptions", methods=["GET"])
+def list_transcriptions():
+    transcriptions = list_valid_transcriptions()
+    return jsonify(transcriptions)
+
+@app.route("/delete_transcription/<int:transcription_id>", methods=["DELETE"])
+def delete_transcription_route(transcription_id):
+    success = delete_transcription(transcription_id)
+    if success:
+        return jsonify({"responseMessage": "Transcrição deletada com sucesso"}), 200
+    else:
+        return jsonify({"responseMessage": "Erro ao deletar transcrição"}), 400
+
 
 @app.route('/add_transcription')
 def add_transcription_page():
     return render_template('add_transcription.html')
+
+
 
 
 if __name__ == "__main__":

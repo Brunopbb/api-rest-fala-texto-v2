@@ -1,23 +1,7 @@
-import os
-import psycopg2
+
 import random
-from dotenv import load_dotenv
-import urllib.parse as urlparse
+from database_connection import *
 
-load_dotenv()
-
-
-def get_database_connection():
-    url = urlparse.urlparse(os.getenv("DATABASE_URL"))
-
-    conn = psycopg2.connect(
-        database=url.path[1:],
-        user=url.username,
-        password=url.password,
-        host=url.hostname,
-        port=url.port
-    )
-    return conn
 
 def get_random_transcription():
     conn = get_database_connection()
@@ -73,7 +57,7 @@ def add_transcription_on(transcription):
         return True, "Transcrição adicionada com sucesso."
 
     except Exception as e:
-        return False, f"Erro ao adicionar transcrição"
+        return False, f"Erro ao adicionar tracrição"
 
 
 def transcription_exists(transcription):
@@ -91,6 +75,42 @@ def transcription_exists(transcription):
         return count > 0
 
     except Exception as e:
+        return False
+
+def list_valid_transcriptions():
+    try:
+        conn = get_database_connection()
+        cur = conn.cursor()
+
+        query = "SELECT id, transcription FROM transcriptions WHERE valid = true"
+        cur.execute(query)
+        transcriptions = cur.fetchall()
+
+        cur.close()
+        conn.close()
+
+        return [{"id": row[0], "transcription": row[1]} for row in transcriptions]
+
+    except Exception as e:
+        print(f"Erro ao listar transcrições: {str(e)}")
+        return []
+
+def delete_transcription(transcription_id):
+    try:
+        conn = get_database_connection()
+        cur = conn.cursor()
+
+        query = "DELETE FROM transcriptions WHERE id = %s"
+        cur.execute(query, (transcription_id,))
+        conn.commit()
+
+        cur.close()
+        conn.close()
+
+        return True
+
+    except Exception as e:
+        print(f"Erro ao deletar transcrição: {str(e)}")
         return False
 
 
@@ -125,3 +145,4 @@ def create_table_if_not_exists():
 
     except Exception as e:
         print(f"Erro ao criar tabela: {str(e)}")
+
