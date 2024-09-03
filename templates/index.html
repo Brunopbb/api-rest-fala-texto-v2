@@ -11,36 +11,45 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
+            padding: 20px;
             background-color: #f0f0f0;
         }
         h1 {
             color: #333;
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 20px;
         }
         .transcription-container {
             background-color: #fff;
-            padding: 30px;
+            padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             text-align: center;
-            max-width: 80%;
+            width: 100%;
+            max-width: 600px;
             margin: 20px auto;
         }
         .transcription {
-            font-size: 1.5em;
+            font-size: 1.5rem;
             color: #555;
             word-wrap: break-word;
+            max-width: 100%; /* Garante que o texto se adapte à largura da caixa */
+            overflow-wrap: break-word; /* Quebra palavras longas */
+            text-align: left; /* Alinha o texto à esquerda */
         }
         .controls {
             margin-top: 20px;
             display: flex;
             justify-content: center;
             gap: 10px;
+            flex-wrap: wrap; /* Permite que os botões se ajustem ao tamanho da tela */
         }
         button {
             padding: 12px 24px;
-            font-size: 1.2em;
+            font-size: 1rem;
             cursor: pointer;
             border: none;
             border-radius: 5px;
@@ -59,10 +68,11 @@
         }
         .add-transcription-link {
             margin-top: 20px;
+            text-align: center;
         }
         .add-transcription-link a {
             padding: 12px 24px;
-            font-size: 1.2em;
+            font-size: 1rem;
             cursor: pointer;
             text-decoration: none;
             border-radius: 5px;
@@ -82,8 +92,52 @@
         .sending-message {
             margin-top: 20px;
             color: #007BFF;
-            font-size: 1.2em;
+            font-size: 1.2rem;
             display: none; /* Ocultado por padrão */
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.5rem;
+            }
+            .controls {
+                flex-direction: column; /* Empilha os botões em telas menores */
+                gap: 15px;
+            }
+            button {
+                width: 100%; /* Botões ocupam 100% da largura */
+                font-size: 1rem;
+                padding: 10px;
+            }
+            .transcription-container {
+                padding: 15px;
+            }
+            .transcription {
+                font-size: 1.2rem;
+                text-align: center; /* Centraliza o texto para telas menores */
+            }
+            .add-transcription-link a {
+                width: 100%;
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.2rem;
+            }
+            .transcription {
+                font-size: 1rem;
+            }
+            button {
+                font-size: 0.9rem;
+                padding: 8px 16px;
+            }
+            .add-transcription-link a {
+                font-size: 0.9rem;
+                padding: 10px 16px;
+            }
         }
     </style>
 </head>
