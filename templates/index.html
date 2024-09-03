@@ -36,6 +36,9 @@
             font-size: 1.5rem;
             color: #555;
             word-wrap: break-word;
+            max-width: 100%; /* Garante que o texto se adapte à largura da caixa */
+            overflow-wrap: break-word; /* Quebra palavras longas */
+            text-align: left; /* Alinha o texto à esquerda */
         }
         .controls {
             margin-top: 20px;
@@ -112,6 +115,7 @@
             }
             .transcription {
                 font-size: 1.2rem;
+                text-align: center; /* Centraliza o texto para telas menores */
             }
             .add-transcription-link a {
                 width: 100%;
