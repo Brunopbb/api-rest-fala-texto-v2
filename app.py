@@ -31,7 +31,7 @@ def random_transcription():
 def upload_audio():
     audio_keys = [key for key in request.files.keys() if key.startswith('audios')]
     transcription_keys = [key for key in request.form.keys() if key.startswith('transcriptions')]
-    transcription_id = request.form.get('transcription_id')  # Ajuste aqui
+    transcription_id = request.form.get('transcription_id')
 
     if not audio_keys or not transcription_keys or not transcription_id:
         return jsonify({"Error": "Áudios ou transcrições não foram enviados corretamente"}), 400
