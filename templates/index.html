@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aquisição de Dados de Áudio - LABMET</title>
-    <style>
+    <title>Aquisição de Dados de Áudio - LABMET</title><style>
         body {
             font-family: Arial, sans-serif;
             display: flex;
@@ -158,11 +157,11 @@
     <div class="instructions">
         <p>Para utilizar esta plataforma, siga as instruções abaixo:</p>
         <ol>
+            <li>Caso nenhuma transcrição seja exibida, é possivel adicionar uma nova clicando em "adicionar nova transcrição"</li>
             <li>Clique em "Iniciar Gravação" para começar a gravar seu áudio.</li>
             <li>Quando terminar, clique em "Parar Gravação".</li>
             <li>Você pode salvar ou cancelar a gravação antes de iniciar uma nova.</li>
             <li>Após salvar o áudio, repita o processo ou clique em "Enviar Todos os Áudios" para finalizar.</li>
-            <li>Caso nenhuma transcrição seja exibida, é possivel adicionar uma nova clicando em "adicionar nova transcrição"</li>
         </ol>
     </div>
 
@@ -185,109 +184,233 @@
         <a href="/add_transcription">Adicionar Nova Transcrição</a>
     </div>
 
-    <script>
-        let mediaRecorder;
-        let audioChunks = [];
-        let recordedAudios = [];
-        let currentTranscription = {};
+    <div id="message" style="margin-top: 20px; color: blue; font-size: 1.2rem;"></div>
+    <div id="audio-counter" style="margin-top: 10px; font-size: 1.2rem; color: #007BFF;">Áudios prontos para enviar: 0</div>
 
-        async function fetchRandomTranscription() {
+
+<script>
+    let mediaRecorder;
+    let audioChunks = [];
+    let recordedAudios = [];
+    let currentTranscription = {};
+
+    // Função para exibir mensagens na página
+    function showMessage(message, color = 'blue') {
+        const messageDiv = document.getElementById('message');
+        messageDiv.style.color = color;
+        messageDiv.textContent = message;
+    }
+
+    // Função para atualizar o contador de áudios
+    function updateAudioCounter() {
+        const audioCounter = document.getElementById('audio-counter');
+        audioCounter.textContent = `Áudios prontos para enviar: ${recordedAudios.length}`;
+        // Salvar a quantidade de áudios no sessionStorage
+        sessionStorage.setItem('audioCount', recordedAudios.length);
+    }
+
+    // Função para carregar a quantidade de áudios do sessionStorage
+    function loadAudioCounter() {
+        const savedAudioCount = sessionStorage.getItem('audioCount');
+        const audioCounter = document.getElementById('audio-counter');
+        if (savedAudioCount) {
+            audioCounter.textContent = `Áudios prontos para enviar: ${savedAudioCount}`;
+        } else {
+            audioCounter.textContent = `Áudios prontos para enviar: 0`;
+        }
+    }
+
+    // Função para converter Blob em um formato base64 para armazenar no sessionStorage
+    function blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    // Função para converter base64 de volta para Blob
+    function base64ToBlob(base64, mimeType) {
+        const byteString = atob(base64.split(',')[1]);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        return new Blob([ab], { type: mimeType });
+    }
+
+    // Carregar os áudios gravados salvos no sessionStorage ao carregar a página
+    window.addEventListener('load', async () => {
+        const savedAudios = sessionStorage.getItem('recordedAudios');
+        if (savedAudios) {
+            const parsedAudios = JSON.parse(savedAudios);
+            recordedAudios = await Promise.all(parsedAudios.map(async audioData => {
+                const audioBlob = base64ToBlob(audioData.audioBase64, 'audio/wav');
+                return { audio: audioBlob, transcription: audioData.transcription };
+            }));
+            if (recordedAudios.length > 0) {
+                document.getElementById('send-all').disabled = false;
+            }
+            updateAudioCounter();
+        }
+        loadAudioCounter();
+
+        // Verificar se há uma transcrição válida disponível ao carregar a página
+        fetchRandomTranscription();
+    });
+
+    // Função para salvar os áudios e a transcrição atual no sessionStorage
+    async function saveStateToSession() {
+        const audiosToSave = await Promise.all(recordedAudios.map(async audioData => {
+            const audioBase64 = await blobToBase64(audioData.audio);
+            return { audioBase64, transcription: audioData.transcription };
+        }));
+        sessionStorage.setItem('recordedAudios', JSON.stringify(audiosToSave));
+        sessionStorage.setItem('currentTranscription', JSON.stringify(currentTranscription));
+    }
+
+    // Buscar transcrição aleatória e garantir que o botão de gravação só é ativado se houver transcrição
+    async function fetchRandomTranscription() {
+        try {
             const response = await fetch('/random_transcription');
             const data = await response.json();
-            currentTranscription = data;
-            document.getElementById('transcription').textContent = currentTranscription.transcription;
+            if (data && data.transcription) {
+                currentTranscription = data;
+                document.getElementById('transcription').textContent = currentTranscription.transcription;
+                document.getElementById('start-record').disabled = false;
+                showMessage('Transcrição carregada. Pronto para gravar.', 'green');
+            } else {
+                currentTranscription = {};
+                document.getElementById('transcription').textContent = '';
+                document.getElementById('start-record').disabled = true;
+                showMessage('Nenhuma transcrição disponível. Não é possível iniciar a gravação.', 'red');
+            }
+        } catch (error) {
+            console.error("Erro ao buscar transcrição:", error);
+            document.getElementById('start-record').disabled = true;
+            showMessage('Erro ao carregar transcrição. Tente novamente mais tarde.', 'red');
+        }
+    }
+
+    document.getElementById('start-record').addEventListener('click', async () => {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.addEventListener('dataavailable', event => {
+            audioChunks.push(event.data);
+        });
+
+        mediaRecorder.start();
+        document.getElementById('start-record').disabled = true;
+        document.getElementById('stop-record').disabled = false;
+        document.getElementById('cancel-audio').disabled = false;
+
+        showMessage('Gravação iniciada.', 'green');
+    });
+
+    document.getElementById('stop-record').addEventListener('click', () => {
+        mediaRecorder.stop();
+
+        mediaRecorder.addEventListener('stop', () => {
+            const audioBlob = new Blob(audioChunks);
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+            audio.play();
+
+            document.getElementById('save-audio').disabled = false;
+            document.getElementById('cancel-audio').disabled = false;
+            document.getElementById('stop-record').disabled = true;
+
+            showMessage('Gravação parada. Áudio pronto para salvar.', 'green');
+        });
+
+        document.getElementById('start-record').disabled = false;
+    });
+
+    document.getElementById('cancel-audio').addEventListener('click', () => {
+        audioChunks = [];
+        document.getElementById('save-audio').disabled = true;
+        document.getElementById('cancel-audio').disabled = true;
+        document.getElementById('stop-record').disabled = true;
+        document.getElementById('start-record').disabled = false;
+
+        showMessage('Gravação cancelada.', 'orange');
+    });
+
+    document.getElementById('save-audio').addEventListener('click', async () => {
+        const audioBlob = new Blob(audioChunks);
+
+        recordedAudios.push({
+            audio: audioBlob,
+            transcription: currentTranscription.transcription
+        });
+
+        updateAudioCounter();
+
+        // Salvar os áudios e a transcrição no sessionStorage
+        await saveStateToSession();
+
+        // Chamar o endpoint para salvar o áudio e invalidar a transcrição
+        const transcriptionId = currentTranscription.id;
+        try {
+            const response = await fetch(`/save_audio/${transcriptionId}`);
+            if (response.ok) {
+                showMessage("Áudio salvo e transcrição invalidada com sucesso.", 'green');
+
+                // Buscar nova transcrição após salvar o áudio com sucesso
+                fetchRandomTranscription();
+            } else {
+                showMessage("Erro ao salvar o áudio e invalidar a transcrição.", 'red');
+            }
+        } catch (error) {
+            console.error("Erro ao salvar o áudio:", error);
+            showMessage("Ocorreu um erro ao salvar o áudio.", 'red');
         }
 
-        // Fetch a new transcription when the page loads
-        fetchRandomTranscription();
+        document.getElementById('save-audio').disabled = true;
+        document.getElementById('cancel-audio').disabled = true;
+        document.getElementById('send-all').disabled = false;
+    });
 
-        document.getElementById('start-record').addEventListener('click', async () => {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
-            audioChunks = [];
+    document.getElementById('send-all').addEventListener('click', async () => {
+        const formData = new FormData();
 
-            mediaRecorder.addEventListener('dataavailable', event => {
-                audioChunks.push(event.data);
-            });
+        const transcriptionId = currentTranscription.id;  // ID da transcrição
+        formData.append('transcription_id', transcriptionId);  // Adiciona o ID da transcrição
 
-            mediaRecorder.start();
-            document.getElementById('start-record').disabled = true;
-            document.getElementById('stop-record').disabled = false;
-            document.getElementById('cancel-audio').disabled = false;
+        recordedAudios.forEach((item, index) => {
+            formData.append(`audios[${index}]`, item.audio, `recorded_audio_${index}.wav`);
+            formData.append(`transcriptions[${index}]`, item.transcription);
         });
 
-        document.getElementById('stop-record').addEventListener('click', () => {
-            mediaRecorder.stop();
+        // Mostrar a mensagem de envio
+        showMessage('Enviando áudios, por favor aguarde...', 'blue');
 
-            mediaRecorder.addEventListener('stop', () => {
-                const audioBlob = new Blob(audioChunks);
-                const audioUrl = URL.createObjectURL(audioBlob);
-                const audio = new Audio(audioUrl);
-                audio.play();
-
-                // Habilitar o botão de salvar áudio
-                document.getElementById('save-audio').disabled = false;
-                document.getElementById('cancel-audio').disabled = false;
-                document.getElementById('stop-record').disabled = true;
-            });
-
-            document.getElementById('start-record').disabled = false;
+        const response = await fetch('/upload_audio', {
+            method: 'POST',
+            body: formData
         });
 
-        document.getElementById('cancel-audio').addEventListener('click', () => {
-            audioChunks = [];
-            document.getElementById('save-audio').disabled = true;
-            document.getElementById('cancel-audio').disabled = true;
-            document.getElementById('stop-record').disabled = true;
-            document.getElementById('start-record').disabled = false;
-        });
+        if (response.ok) {
+            showMessage("Todos os áudios foram enviados com sucesso!", 'green');
+            recordedAudios = [];
+            sessionStorage.removeItem('recordedAudios');  // Limpar os áudios salvos no sessionStorage
+            sessionStorage.removeItem('currentTranscription');  // Limpar a transcrição atual
+            document.getElementById('send-all').disabled = true;
 
-        document.getElementById('save-audio').addEventListener('click', () => {
-            const audioBlob = new Blob(audioChunks);
+            sessionStorage.setItem('audioCount', 0);  // Zerar a quantidade de áudios no sessionStorage
+            updateAudioCounter();  // Atualizar o contador na interface
 
-            recordedAudios.push({
-                audio: audioBlob,
-                transcription: currentTranscription.transcription
-            });
+        } else {
+            showMessage("Erro ao enviar os áudios.", 'red');
+        }
+    });
+</script>
 
-            document.getElementById('save-audio').disabled = true;
-            document.getElementById('cancel-audio').disabled = true;
-            document.getElementById('send-all').disabled = false;
 
-            fetchRandomTranscription();
-        });
 
-        document.getElementById('send-all').addEventListener('click', async () => {
-            const formData = new FormData();
-
-            const transcriptionId = currentTranscription.id;  // ID da transcrição
-            formData.append('transcription_id', transcriptionId);  // Adiciona o ID da transcrição
-
-            recordedAudios.forEach((item, index) => {
-                formData.append(`audios[${index}]`, item.audio, `recorded_audio_${index}.wav`);
-                formData.append(`transcriptions[${index}]`, item.transcription);
-            });
-
-            // Mostrar a mensagem de envio
-            const sendingMessage = document.getElementById('sendingMessage');
-            sendingMessage.style.display = 'block';
-
-            const response = await fetch('/upload_audio', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (response.ok) {
-                alert("Todos os áudios foram enviados com sucesso!");
-                recordedAudios = [];
-                document.getElementById('send-all').disabled = true;
-            } else {
-                alert("Erro ao enviar os áudios.");
-            }
-
-            // Esconder a mensagem de envio após a conclusão
-            sendingMessage.style.display = 'none';
-        });
-    </script>
 </body>
 </html>

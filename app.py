@@ -1,3 +1,5 @@
+from crypt import methods
+
 from flask import Flask, jsonify, render_template, request
 from huggingface_hub import login
 from datasets import Dataset, Audio, load_dataset, concatenate_datasets
@@ -35,7 +37,7 @@ def upload_audio():
     transcription_keys = [key for key in request.form.keys() if key.startswith('transcriptions')]
     transcription_id = request.form.get('transcription_id')
 
-    if not audio_keys or not transcription_keys or not transcription_id:
+    if not audio_keys or not transcription_keys:
         return jsonify({"Error": "Áudios ou transcrições não foram enviados corretamente"}), 400
 
     try:
@@ -79,10 +81,18 @@ def upload_audio():
 
         new_data.push_to_hub(huggingface_id)
 
-        # Invalidar a transcrição agora que o áudio foi salvo
-        invalidate_transcription(transcription_id)
+
 
     return jsonify({"Mensagem": "Áudios recebidos e salvos com sucesso"}), 200
+
+@app.route("/save_audio/<int:transcription_id>", methods=["GET"])
+def save_audio(transcription_id):
+    response = invalidate_transcription(transcription_id)
+    if response:
+        return jsonify({"responseMessage": "Audio Salvo"}), 200
+    return jsonify({"responseMessage": "Audio não foi Salvo"}), 400
+
+
 
 @app.route("/add_transcription", methods=["POST"])
 def add_transcription():
@@ -113,8 +123,6 @@ def delete_transcription_route(transcription_id):
 @app.route('/add_transcription')
 def add_transcription_page():
     return render_template('add_transcription.html')
-
-
 
 
 if __name__ == "__main__":

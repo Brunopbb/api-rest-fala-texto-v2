@@ -35,6 +35,8 @@ def invalidate_transcription(transcription_id):
     cur.close()
     conn.close()
 
+    return True
+
 def add_transcription_on(transcription):
 
     if not transcription:
@@ -145,4 +147,26 @@ def create_table_if_not_exists():
 
     except Exception as e:
         print(f"Erro ao criar tabela: {str(e)}")
+
+
+def get_transcription_id(transcription):
+    try:
+        conn = get_database_connection()
+        cur = conn.cursor()
+
+        query = "SELECT id FROM transcriptions WHERE transcription = %s AND valid = true"
+        cur.execute(query, (transcription,))
+        result = cur.fetchone()
+
+        cur.close()
+        conn.close()
+
+        if result:
+            return result[0]  # Retorna o ID da transcrição
+        else:
+            return None  # Caso a transcrição não seja encontrada ou já tenha sido invalidada
+
+    except Exception as e:
+        print(f"Erro ao obter ID da transcrição: {str(e)}")
+        return None
 
