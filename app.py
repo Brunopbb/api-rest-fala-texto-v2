@@ -2,7 +2,7 @@ from crypt import methods
 
 from flask import Flask, jsonify, render_template, request
 from huggingface_hub import login
-from datasets import Dataset, Audio, load_dataset, concatenate_datasets
+from datasets import Dataset, Audio, load_dataset, concatenate_datasets, DatasetDict
 from flask_cors import CORS
 import io
 import soundfile as sf
@@ -79,7 +79,13 @@ def upload_audio():
         else:
             new_data = dataset
 
-        new_data.push_to_hub(huggingface_id)
+        train_test_split = new_data.train_test_split(test_size=0.2)
+        dataset_dict = DatasetDict({
+            "train": train_test_split["train"],
+            "test": train_test_split["test"]
+        })
+
+        dataset_dict.push_to_hub(huggingface_id)
 
 
 
