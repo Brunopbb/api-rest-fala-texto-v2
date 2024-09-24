@@ -10,7 +10,7 @@ load_dotenv()
 
 def get_database_connection():
     url = urlparse.urlparse(os.getenv("DATABASE_URL"))
-
+    print(f"Conectando ao banco de dados: {url}") 
     conn = psycopg2.connect(
         database=url.path[1:],
         user=url.username,
