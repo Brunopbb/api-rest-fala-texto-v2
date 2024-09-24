@@ -43,8 +43,8 @@ def upload_audio():
 
     try:
         exists_dataset = load_dataset(huggingface_id)
-        exists_transcriptions_train = set(exists_dataset["train"]['transcriptions'])
-        exists_transcriptions_test = set(exists_dataset["test"]['transcriptions'])
+        exists_transcriptions_train = set(exists_dataset["train"]['transcription'])
+        exists_transcriptions_test = set(exists_dataset["test"]['transcription'])
         exists_transcriptions = exists_transcriptions_train.union(exists_transcriptions_test)
     except FileNotFoundError:
         exists_dataset = None
