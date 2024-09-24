@@ -77,14 +77,25 @@ def upload_audio():
         dataset = Dataset.from_dict(data)
         dataset = dataset.cast_column("audio", Audio(sampling_rate=16000))
 
-        train_test_split = dataset.train_test_split(test_size=0.2)
+
 
         if exists_dataset:
-            combined_train = concatenate_datasets([exists_dataset['train'], train_test_split['train']])
-            combined_test = concatenate_datasets([exists_dataset['test'], train_test_split['test']])
+
+            if len(dataset) >= 2:
+                train_test_split = dataset.train_test_split(test_size=0.2)
+                combined_train = concatenate_datasets([exists_dataset['train'], train_test_split['train']])
+                combined_test = concatenate_datasets([exists_dataset['test'], train_test_split['test']])
+            else:
+                combined_train = concatenate_datasets([exists_dataset['train'], dataset])
+                combined_test = exists_dataset['test']
         else:
-            combined_train = train_test_split['train']
-            combined_test = train_test_split['test']
+            if len(dataset) >= 2:
+                train_test_split = dataset.train_test_split(test_size=0.2)
+                combined_train = train_test_split['train']
+                combined_test = train_test_split['test']
+            else:
+                combined_train = dataset
+                combined_test = Dataset.from_dict({'audio': [], 'transcription': []})
 
 
         dataset_dict = DatasetDict({
