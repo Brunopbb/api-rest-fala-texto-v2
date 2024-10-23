@@ -67,7 +67,7 @@ def transcription_exists(transcription):
         conn = get_database_connection()
         cur = conn.cursor()
 
-        query = "SELECT COUNT(*) FROM transcriptions WHERE transcription = %s"
+        query = "SELECT COUNT(*) FROM transcriptions WHERE LOWER(transcription) = LOWER(%s)"
         cur.execute(query, (transcription,))
         count = cur.fetchone()[0]
 
