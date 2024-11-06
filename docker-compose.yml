@@ -11,9 +11,12 @@ services:
       - HUGGINGFACE_REPO_ID=${HUGGINGFACE_REPO_ID}
     depends_on:
       - db
+    networks:
+      public_net:
+        ipv4_address: "ip1"
 
   db:
-    image: postgres:latest
+    image: postgres:16
     ports:
       - "5433:5432"
     environment:
@@ -21,8 +24,19 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
-      - postgres_data:/var/lib/postgresql/data  # Persistência de dados
+      - postgres_data:/var/lib/postgresql/data  
+    networks:
+      public_net:
+        ipv4_address: "ip2"
 
 volumes:
   postgres_data:
 
+networks:
+  public_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: "subnet"
+    driver_opts:
+      com.docker.network.bridge.name: "fala-texto-bridge-network"
