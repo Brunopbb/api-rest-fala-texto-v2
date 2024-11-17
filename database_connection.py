@@ -19,3 +19,4 @@ def get_database_connection():
         port=url.port
     )
     return conn
+
