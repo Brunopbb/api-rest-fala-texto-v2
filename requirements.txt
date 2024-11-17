@@ -6,3 +6,4 @@ datasets==2.21.0
 pydub==0.25.1
 soundfile==0.12.1
 psycopg2-binary
+APScheduler==3.10.4

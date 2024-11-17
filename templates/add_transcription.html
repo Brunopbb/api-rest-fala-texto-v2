@@ -1,10 +1,53 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Adicionar Transcrição - LABMET</title>
     <style>
+        #paginationControls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            /* Define o espaço entre os botões */
+            margin-top: 20px;
+            /* Adiciona margem acima dos botões */
+        }
+
+        #paginationControls button {
+            padding: 12px 24px;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007BFF;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+
+        #paginationControls button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        #paginationControls button:disabled {
+            background-color: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .active-page {
+            font-weight: bold;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            cursor: default;
+        }
+
         /* Reseta estilos padrão */
         * {
             margin: 0;
@@ -173,9 +216,11 @@
                 flex-direction: column;
                 align-items: stretch;
             }
+
         }
     </style>
 </head>
+
 <body>
     <h1>Adicionar Nova Transcrição</h1>
     <div class="container">
@@ -188,13 +233,19 @@
         <div class="transcription-list" id="transcriptionList">
             <!-- Items serão inseridos aqui via JavaScript -->
         </div>
+
+        <div id="paginationControls" style="margin-top: 20px; text-align: center;">
+            <!-- Botões de paginação serão inseridos aqui -->
+        </div>
     </div>
     <div class="back-link">
         <a href="/">Voltar</a>
     </div>
 
+
+
     <script>
-        document.getElementById('addTranscriptionBtn').addEventListener('click', async function(event) {
+        document.getElementById('addTranscriptionBtn').addEventListener('click', async function (event) {
             event.preventDefault();
 
             const transcriptionText = document.getElementById('transcription').value.trim();
@@ -232,7 +283,11 @@
             }
         });
 
-        async function loadTranscriptions() {
+        const itemsPerPage = 5; // Número de itens por página
+        let currentPage = 1;
+        let totalPages = 1;
+
+        async function loadTranscriptions(page = 1) {
             try {
                 const response = await fetch('/list_transcriptions');
                 const transcriptions = await response.json();
@@ -244,7 +299,15 @@
                     return;
                 }
 
-                transcriptions.forEach(transcription => {
+                // Atualiza paginação
+                totalPages = Math.ceil(transcriptions.length / itemsPerPage);
+                currentPage = page;
+
+                const start = (currentPage - 1) * itemsPerPage;
+                const end = start + itemsPerPage;
+                const paginatedItems = transcriptions.slice(start, end);
+
+                paginatedItems.forEach(transcription => {
                     const transcriptionItem = document.createElement('div');
                     transcriptionItem.className = 'transcription-item';
 
@@ -262,9 +325,32 @@
 
                     transcriptionList.appendChild(transcriptionItem);
                 });
+
+                renderPaginationControls();
             } catch (error) {
                 console.error('Erro ao carregar transcrições:', error);
             }
+        }
+
+        function renderPaginationControls() {
+            const paginationControls = document.getElementById('paginationControls');
+            paginationControls.innerHTML = '';
+
+            if (totalPages <= 1) return;
+
+            // Botão "Anterior"
+            const prevButton = document.createElement('button');
+            prevButton.textContent = 'Anterior';
+            prevButton.disabled = currentPage === 1; // Desabilita se na primeira página
+            prevButton.addEventListener('click', () => loadTranscriptions(currentPage - 1));
+            paginationControls.appendChild(prevButton);
+
+            // Botão "Próximo"
+            const nextButton = document.createElement('button');
+            nextButton.textContent = 'Próximo';
+            nextButton.disabled = currentPage === totalPages; // Desabilita se na última página
+            nextButton.addEventListener('click', () => loadTranscriptions(currentPage + 1));
+            paginationControls.appendChild(nextButton);
         }
 
         async function deleteTranscription(id) {
@@ -276,7 +362,7 @@
                 });
 
                 if (response.ok) {
-                    loadTranscriptions();
+                    loadTranscriptions(currentPage); // Recarrega a página atual
                 } else {
                     alert('Erro ao deletar a transcrição.');
                 }
@@ -289,4 +375,5 @@
         loadTranscriptions();
     </script>
 </body>
+
 </html>

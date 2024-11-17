@@ -1,13 +1,15 @@
-from crypt import methods
-from os.path import exists
-
 from flask import Flask, jsonify, render_template, request
 from huggingface_hub import login
 from datasets import Dataset, Audio, load_dataset, concatenate_datasets, DatasetDict
 from flask_cors import CORS
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+from dotenv import load_dotenv
+from pydub import AudioSegment
+import os
 import io
 import soundfile as sf
-from pydub import AudioSegment
+import json
 from database import *
 
 app = Flask(__name__)
@@ -20,6 +22,75 @@ huggingface_id = os.getenv("HUGGINGFACE_REPO_ID")
 login(huggingface_token)
 
 create_table_if_not_exists()
+
+LOCAL_DATA_FILE = "local_data.json"
+
+
+
+scheduler = BackgroundScheduler()
+scheduler.start()
+
+def initialize_local_data_file():
+    """
+    Ensures that the local data file exists and is properly initialized.
+    """
+    if not os.path.exists(LOCAL_DATA_FILE):
+        try:
+            with open(LOCAL_DATA_FILE, "w") as file:
+                json.dump({"audio": [], "transcription": []}, file)
+            print(f"Local data file '{LOCAL_DATA_FILE}' created successfully.")
+        except Exception as e:
+            print(f"Error creating local data file: {e}")
+            raise
+
+initialize_local_data_file()
+def sync_data_with_huggingface():
+    """
+    Synchronizes locally stored data with the Hugging Face dataset.
+    """
+    with open(LOCAL_DATA_FILE, "r+") as file:
+        local_data = json.load(file)
+
+        if not local_data["audio"]:
+            return  # Nothing to sync
+
+        new_data = Dataset.from_dict(local_data)
+        new_data = new_data.cast_column("audio", Audio(sampling_rate=16000))
+
+        try:
+            # Load the existing dataset from Hugging Face
+            existing_dataset = load_dataset(huggingface_id)
+
+            if len(new_data) >= 2:
+                train_test_split = new_data.train_test_split(test_size=0.2)
+                combined_train = concatenate_datasets([existing_dataset["train"], train_test_split["train"]])
+                combined_test = concatenate_datasets([existing_dataset["test"], train_test_split["test"]])
+            else:
+                combined_train = concatenate_datasets([existing_dataset["train"], new_data])
+                combined_test = existing_dataset["test"]
+        except FileNotFoundError:
+            # If the dataset doesn't exist on Hugging Face, create a new one
+            if len(new_data) >= 2:
+                train_test_split = new_data.train_test_split(test_size=0.2)
+                combined_train = train_test_split["train"]
+                combined_test = train_test_split["test"]
+            else:
+                combined_train = new_data
+                combined_test = Dataset.from_dict({"audio": [], "transcription": []})
+
+        # Create DatasetDict
+        dataset_dict = DatasetDict({"train": combined_train, "test": combined_test})
+
+        # Push updated dataset to Hugging Face
+        dataset_dict.push_to_hub(huggingface_id)
+
+        # Clear local storage after successful sync
+        file.seek(0)
+        json.dump({"audio": [], "transcription": []}, file)
+        file.truncate()
+
+
+scheduler.add_job(sync_data_with_huggingface, IntervalTrigger(minutes=10))
 
 @app.route('/')
 def index():
@@ -37,18 +108,8 @@ def upload_audio():
     audio_keys = [key for key in request.files.keys() if key.startswith('audios')]
     transcription_keys = [key for key in request.form.keys() if key.startswith('transcriptions')]
 
-
     if not audio_keys or not transcription_keys:
         return jsonify({"Error": "Áudios ou transcrições não foram enviados corretamente"}), 400
-
-    try:
-        exists_dataset = load_dataset(huggingface_id)
-        exists_transcriptions_train = set(exists_dataset["train"]['transcription'])
-        exists_transcriptions_test = set(exists_dataset["test"]['transcription'])
-        exists_transcriptions = exists_transcriptions_train.union(exists_transcriptions_test)
-    except FileNotFoundError:
-        exists_dataset = None
-        exists_transcriptions = set()
 
     data = {
         'audio': [],
@@ -59,9 +120,6 @@ def upload_audio():
         audio_file = request.files[audio_key]
         transcription = request.form[transcription_key]
 
-        if transcription in exists_transcriptions:
-            continue
-
         audio_data = audio_file.read()
         audio = AudioSegment.from_file(io.BytesIO(audio_data))
 
@@ -70,44 +128,19 @@ def upload_audio():
         wav_io.seek(0)
         samples, sample_rate = sf.read(wav_io)
 
-        data['audio'].append({"array": samples, "sampling_rate": sample_rate})
+        data['audio'].append({"array": samples.tolist(), "sampling_rate": sample_rate})
         data['transcription'].append(transcription)
 
-    if data['audio']:
-        dataset = Dataset.from_dict(data)
-        dataset = dataset.cast_column("audio", Audio(sampling_rate=16000))
+    # Append the data to the local storage
+    with open(LOCAL_DATA_FILE, "r+") as file:
+        local_data = json.load(file)
+        local_data["audio"].extend(data["audio"])
+        local_data["transcription"].extend(data["transcription"])
+        file.seek(0)
+        json.dump(local_data, file)
+        file.truncate()
 
-
-
-        if exists_dataset:
-
-            if len(dataset) >= 2:
-                train_test_split = dataset.train_test_split(test_size=0.2)
-                combined_train = concatenate_datasets([exists_dataset['train'], train_test_split['train']])
-                combined_test = concatenate_datasets([exists_dataset['test'], train_test_split['test']])
-            else:
-                combined_train = concatenate_datasets([exists_dataset['train'], dataset])
-                combined_test = exists_dataset['test']
-        else:
-            if len(dataset) >= 2:
-                train_test_split = dataset.train_test_split(test_size=0.2)
-                combined_train = train_test_split['train']
-                combined_test = train_test_split['test']
-            else:
-                combined_train = dataset
-                combined_test = Dataset.from_dict({'audio': [], 'transcription': []})
-
-
-        dataset_dict = DatasetDict({
-            "train": combined_train,
-            "test": combined_test
-        })
-
-        dataset_dict.push_to_hub(huggingface_id)
-
-
-
-    return jsonify({"Mensagem": "Áudios recebidos e salvos com sucesso"}), 200
+    return jsonify({"Mensagem": "Áudios recebidos e armazenados localmente"}), 200
 
 @app.route("/save_audio/<int:transcription_id>", methods=["GET"])
 def save_audio(transcription_id):
@@ -147,6 +180,7 @@ def delete_transcription_route(transcription_id):
 @app.route('/add_transcription')
 def add_transcription_page():
     return render_template('add_transcription.html')
+
 
 
 if __name__ == "__main__":
