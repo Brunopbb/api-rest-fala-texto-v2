@@ -12,8 +12,10 @@ import soundfile as sf
 import json
 from database import *
 
+
 app = Flask(__name__)
 CORS(app)
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 
 load_dotenv()
 huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
@@ -90,7 +92,7 @@ def sync_data_with_huggingface():
         file.truncate()
 
 
-scheduler.add_job(sync_data_with_huggingface, IntervalTrigger(minutes=10))
+scheduler.add_job(sync_data_with_huggingface, IntervalTrigger(minutes=5))
 
 @app.route('/')
 def index():
